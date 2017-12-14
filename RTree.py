@@ -180,6 +180,45 @@ class RTree:
                         return F
             return None
 
+    def insert_node(self, N):
+        """
+        Insert a node into the RTree, such that the leaves are on the same level.
+        :param N: a Leaf node or non-leaf node object.
+        """
+        if not self.head:
+            self.head = N
+        else:
+            L = self.choose_node(N)
+            if L.num < self.M:
+                RTree.add_child(L, N)
+                self.adjust_bound(L)
+            elif not L.father:
+                [L, LL] = RTree.split_head(L, E)
+                new_head = Node([L, LL])
+                self.head = new_head
+            else:
+                [L, LL] = RTree.split_node(L, E)
+                P = self.adjust_tree(L, LL)
+                self.adjust_bound(P)
+
+    def choose_node(self, N):
+        """
+        Find the position to insert N, a Leaf or non-leaf object.
+        :param N: a Leaf node or non-leaf node object.
+        """
+        current_tree = self.head
+        if isinstance(N, Node):
+            order = N.order
+        else:
+            order = 0
+        while True:
+            if current_tree.order <= order + 1:
+                return current_tree
+            else:
+                F = RTree.min_increase(current_tree, E)
+                current_tree = F
+
+
     def condense_tree(self, L):
         """
         Adjust the tree structure to be more condense.
@@ -193,10 +232,16 @@ class RTree:
                 P.delete_child(N)
                 Q.append(N)
             else:
-                adjust_bound(P)
+                adjust_bound(N)
             N = P
         # reinstall the entries in Q
-        
+        for q in Q:
+            if isinstance(q,LeafNode):
+                for elem in q.elem:
+                    self.insert(elem)
+            else:
+                for node in q.children:
+                    self.insert_node(node)
         return
 
 
@@ -247,6 +292,7 @@ class Node:
         self.father = None
         self.bounding_box = self.get_bounding_box()
         self.num = len(L)
+        self.order = self.get_order()
         for item in L:
             item.father = self
 
@@ -258,7 +304,7 @@ class Node:
 
     def delete_child(self, E):
         self.children.remove(E)
-        E.father=None
+        E.father = None
         self.bounding_box = self.get_bounding_box()
         self.num -= 1
 
@@ -271,6 +317,15 @@ class Node:
                 bb_new = item.bounding_box
                 bb_1 = bb_1.add_bb(bb_new)
             return bb_1
+
+    def get_order(self):
+        order, L = 0, self
+        while True:
+            L = L.children[0]
+            order += 1
+            if isinstance(L, LeafNode):
+                break
+        return order
 
 
 if __name__ == '__main__':
